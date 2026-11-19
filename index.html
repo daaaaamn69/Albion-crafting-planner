@@ -199,17 +199,27 @@ function refreshRemaining(){
  const el=$('totalMaterials');if(!el)return;const existing=new Map([...el.querySelectorAll('label.checkline')].map(l=>[l.querySelector('.checktext')?.textContent,l.querySelector('input')?.checked]));el.replaceChildren();currentMaterialSummary.forEach((value,i)=>{const label=document.createElement('label');label.className='checkline checkgroup';const input=document.createElement('input');input.type='checkbox';input.checked=existing.get(value)||false;const span=document.createElement('span');span.className='checktext';const match=value.match(/^(.*?): (\d+)(?: — .*)?$/);if(match){span.append(document.createTextNode(value));const price=lastPrices[match[1].toLowerCase()];if(Number.isFinite(price)){const small=document.createElement('small');small.className='material-total-cost';small.textContent='('+((Number(match[2])*price)/1e6).toLocaleString('nl-BE',{maximumFractionDigits:2})+'m)';span.append(small)}}else span.textContent=value;label.append(input,span);el.append(label)})
 }
 $('clearOwned').addEventListener('click',()=>{owned={};saveOwned();updateOwnedMaterials(lastTotals,lastPrices)});
-function craftingStation(rec){const id=(rec.itemId||'').replace(/^T\d+_/,'').toUpperCase();
+function craftingStation(rec){
+ const id=(rec.itemId||'').replace(/^T\d+_/,'').toUpperCase();
+ // Classify by the item ID family; never by its display name or materials.
  if(/^(HEAD|ARMOR|SHOES)_PLATE_/.test(id))return 'Warrior Forge';
  if(/^(HEAD|ARMOR|SHOES)_LEATHER_/.test(id))return 'Hunter Lodge';
  if(/^(HEAD|ARMOR|SHOES)_CLOTH_/.test(id))return 'Mage Tower';
- if(/^OFF_/.test(id))return /BOOK|ORB|TOME/.test(id)?'Mage Tower':/SHIELD/.test(id)?'Warrior Forge':'Hunter Lodge';
- if(/TOOL_/.test(id))return 'Toolmaker';
+ if(/^(HEAD|ARMOR|SHOES)_GATHERER_|^BACKPACK_GATHERER_|^(BAG|CAPE|CAPEITEM)/.test(id))return 'Toolmaker';
+ if(/^2H_TOOL_|^MAIN_TOOL_|^TOOL_/.test(id))return 'Toolmaker';
+ if(/^OFF_/.test(id)){
+  if(/SHIELD/.test(id))return 'Warrior Forge';
+  if(/BOOK|ORB|TOME|DEMONSKULL|CENSER/.test(id))return 'Mage Tower';
+  return 'Hunter Lodge';
+ }
  if(/^(MAIN|2H)_/.test(id)){
- if(/FIRE|FROST|HOLY|NATURE|CURSED|ARCANE|GLACIAL|INFERNO|DIVINE|ENIGMATIC|STAFF_MORGANA/.test(id)&&!/QUARTERSTAFF|IRONCLADEDSTAFF|DOUBLEBLADEDSTAFF|COMBATSTAFF/.test(id))return 'Mage Tower';
- if(/BOW|SPEAR|GLAIVE|DAGGER|CLAW|QUARTERSTAFF|IRONCLADED|DOUBLEBLADED|COMBATSTAFF|GLOVE|GAUNTLET|BRACER/.test(id))return 'Hunter Lodge';
- return 'Warrior Forge';}
- return 'Overige stations';}
+  if(/CROSSBOW|KNUCKLES|GAUNTLETS|GLOVE|BRACER/.test(id)&&!/ICEGAUNTLETS/.test(id))return 'Warrior Forge';
+  if(/ARCANE|CURSED|DEMONICSTAFF|FIRE|INFERNO|FROST|GLACIAL|ICEGAUNTLETS|ICECRYSTAL|HOLY|DIVINE|ENIGMATIC|SKULLORB/.test(id))return 'Mage Tower';
+  if(/BOW|SPEAR|GLAIVE|HARPOON|TRIDENT|DAGGER|CLAW|SICKLE|QUARTERSTAFF|IRONCLADED|DOUBLEBLADED|COMBATSTAFF|TWINSCYTHE|ROCKSTAFF|NATURE|WILDSTAFF|SHAPESHIFTER/.test(id))return 'Hunter Lodge';
+  return 'Warrior Forge';
+ }
+ return 'Overige stations';
+}
 function groupCraftItems(records){
  const groups=new Map();for(const r of records){const station=craftingStation(r.rec);if(!groups.has(station))groups.set(station,[]);groups.get(station).push(r)}
  const order=['Warrior Forge','Hunter Lodge','Mage Tower','Toolmaker','Overige stations'];const output=[];
