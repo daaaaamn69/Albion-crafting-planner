@@ -661,7 +661,7 @@ if(Number.isFinite(cost)){
  const detail=document.createElement('div');detail.className='refine-tier-detail';
  const add=(name,val,color)=>{const r=document.createElement('div');const l=document.createElement('span'),v=document.createElement('strong');l.textContent=name;v.textContent=val;if(color)v.style.color=color;r.append(l,v);detail.append(r)};
  const fmt=n=>Math.round(n).toLocaleString('nl-BE');const color=profit>=0?'#55e69c':'#ff7777';
- add('Sellprijs',fmt(Number(sell)));add('Nettowinst/stuk',fmt(profit),color);add('ROI',cost>0?(profit/cost*100).toLocaleString('nl-BE',{maximumFractionDigits:1})+'%':'—',color);
+ add('Sellprijs',fmt(Number(sell)));add('Nettowinst/stuk',fmt(profit),color);add('ROI',cost>0?(profit/cost*100).toLocaleString('nl-BE',{maximumFractionDigits:1})+'%':'—',cost>0?refiningRoiColor(profit/cost*100):'#aab7c4');
  if(level>=4&&Number.isFinite(weight)&&weight>0){add('Winst/kg',fmt(profit/weight),color);if(carry>0)add('Winst/trip',fmt(Math.floor(carry/weight)*profit),color);}
  result.append(detail);
  }
@@ -687,6 +687,12 @@ function profitKgColor(value){
  const t=Math.max(0,Math.min(1,(value-500)/400));
  const from=[157,199,156],to=[40,255,100];
  return 'rgb('+from.map((v,i)=>Math.round(v+(to[i]-v)*t)).join(',')+')';
+}
+function refiningRoiColor(roi){
+  if(!Number.isFinite(roi))return '#aab7c4';
+  const t=roi<30?Math.max(0,Math.min(1,roi/30)):Math.max(0,Math.min(1,(roi-30)/70));
+  const a=roi<30?[255,65,65]:[145,195,145], b=roi<30?[255,170,170]:[40,255,100];
+  return 'rgb('+a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join(',')+')';
 }
 function roiColor(roi){
   // 20% = zacht groen; lagere ROI verschuift naar rood, hogere naar fel groen.
