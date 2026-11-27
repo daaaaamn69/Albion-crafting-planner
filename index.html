@@ -577,9 +577,10 @@ function cityRawWeight(material,level,enchant,prices,station,net){
  const lower=level===4?cityRawWeight(material,3,0,prices,station,net):Number.isFinite(prices[material+'|'+(level-1)+'.'+enchant+'-buy'])?0:cityRawWeight(material,level-1,enchant,prices,station,net);
  return net*(qty*refinedWeight(level+'.'+enchant)+lower);
 }
-function cityTravelProfit(profit,rawKg,refinedKg,carry,rawCarry){
+function cityTravelProfit(profit,rawKg,refinedKg,carry,rawCarry,outputCities=2){
  if(![profit,rawKg,refinedKg,carry,rawCarry].every(Number.isFinite)||carry<=0||rawCarry<=0||refinedKg<=0)return NaN;
- return profit/(rawKg/rawCarry+2*refinedKg/carry);
+ const trips=rawKg/rawCarry+outputCities*refinedKg/carry;
+ return trips>0?profit/trips:NaN;
 }
 function makeRefineComparison(material,low,high,prices,station,net){
  const a=refineSellSaved[material+'|'+low],b=refineSellSaved[material+'|'+high];
@@ -648,6 +649,7 @@ function refiningCalc(){refineSave();const prices={};document.querySelectorAll('
 if(level===3){
  const t2=prices[material+'|2.0-refined'],raw3=prices[material+'|3.0-raw'],buy3=prices[material+'|3.0-buy'];
  const self=Number.isFinite(t2)&&Number.isFinite(raw3)?(2*raw3+t2)*net+(8*.1125*station/100):NaN;
+ const costs=document.createElement('div');costs.className='refine-buy-compare';costs.textContent=[Number.isFinite(self)?'Zelf refinen: '+Math.ceil(self).toLocaleString('nl-BE'):null,Number.isFinite(buy3)?'Kopen: '+Math.ceil(buy3).toLocaleString('nl-BE'):null].filter(Boolean).join(' · ');row.append(costs);
  if(Number.isFinite(self)&&Number.isFinite(buy3)){
   const diff=Math.abs(self-buy3);
   const hint=document.createElement('div');hint.className='refine-buy-compare';
@@ -665,14 +667,14 @@ if(Number.isFinite(cost)){
  const add=(name,val,color)=>{const r=document.createElement('div');const l=document.createElement('span'),v=document.createElement('strong');l.textContent=name;v.textContent=val;if(color)v.style.color=color;r.append(l,v);detail.append(r)};
  const fmt=n=>Math.round(n).toLocaleString('nl-BE');const color=profit>=0?'#55e69c':'#ff7777';
  add('Sellprijs',fmt(Number(sell)));add('Nettowinst/stuk',fmt(profit),color);if(cost>0)add('ROI',cost>0?(profit/cost*100).toLocaleString('nl-BE',{maximumFractionDigits:1})+'%':'—',cost>0?refiningRoiColor(profit/cost*100):'#aab7c4');
- if(level>=4&&Number.isFinite(weight)&&weight>0){add('Winst/kg',fmt(profit/weight),color);if(carry>0){const piePrice=$('piePrice0').value.trim();const city=cityTravelProfit(profit,cityRawWeight(material,level,enchant,prices,station,net),weight,carry*1.3,carry*1.3*1.3)-(piePrice!==''&&Number.isFinite(Number(piePrice))&&Number(piePrice)>=0?Number(piePrice):0);if(Number.isFinite(city))add('Winst/city',fmt(city),city>=0?'#55e69c':'#ff7777');}}
+ if(level>=3&&Number.isFinite(weight)&&weight>0){add('Winst/kg',fmt(profit/weight),color);if(carry>0){const piePrice=$('piePrice0').value.trim();const city=cityTravelProfit(profit,cityRawWeight(material,level,enchant,prices,station,net),weight,carry*1.3,carry*1.3*1.3,level===3?0:2)-(piePrice!==''&&Number.isFinite(Number(piePrice))&&Number(piePrice)>=0?Number(piePrice):0);if(Number.isFinite(city))add('Winst/city',fmt(city),city>=0?'#55e69c':'#ff7777');else if(level===3&&cityRawWeight(material,level,enchant,prices,station,net)===0)add('Winst/city','Geen transport');}}
  result.append(detail);
  }
 }
-if(level>=4&&Number.isFinite(cost)){
+if(level>=3&&Number.isFinite(cost)){
  const sell=refineSellSaved[material+'|'+tier],carry=Number(refineCarryInput.value),rawCarry=carry*1.3;
  if(sell!=null&&sell!==''&&Number.isFinite(Number(sell))&&Number(sell)>=0){
-  const choices=[];for(let i=0;i<4;i++){const price=$('piePrice'+i),bonus=[30,35,40,45][i];if(price.value.trim()===''||Number(price.value)<0)continue;const multiplier=1+bonus/100;const gain=cityTravelProfit(Number(sell)*.935-cost,cityRawWeight(material,level,enchant,prices,station,net),refinedWeight(tier),carry*multiplier,rawCarry*multiplier)-Number(price.value);if(Number.isFinite(gain))choices.push({tier:'7.'+i,gain});}for(const [idx,c] of choices.entries()){const prev=choices[idx-1];const threshold=prev?100000*(Number(c.tier.split('.')[1])-Number(prev.tier.split('.')[1])):0;const improved=prev?c.gain-prev.gain>threshold:c.tier==='7.0'&&!choices.slice(1).some((next,j)=>next.gain-choices[j].gain>100000*(Number(next.tier.split('.')[1])-Number(choices[j].tier.split('.')[1])));const r=document.createElement('div');r.className='refine-note pie-comparison-result';r.style.marginLeft='8px';r.style.color=improved?'#55e69c':'#aab7c4';r.textContent='Pie '+c.tier+' · '+Math.round(c.gain).toLocaleString('nl-BE')+' / city';result.append(r);}
+  const choices=[];for(let i=0;i<4;i++){const price=$('piePrice'+i),bonus=[30,35,40,45][i];if(price.value.trim()===''||Number(price.value)<0)continue;const multiplier=1+bonus/100;const gain=cityTravelProfit(Number(sell)*.935-cost,cityRawWeight(material,level,enchant,prices,station,net),refinedWeight(tier),carry*multiplier,rawCarry*multiplier,level===3?0:2)-Number(price.value);if(Number.isFinite(gain))choices.push({tier:'7.'+i,gain});}for(const [idx,c] of choices.entries()){const prev=choices[idx-1];const threshold=prev?100000*(Number(c.tier.split('.')[1])-Number(prev.tier.split('.')[1])):0;const improved=prev?c.gain-prev.gain>threshold:c.tier==='7.0'&&!choices.slice(1).some((next,j)=>next.gain-choices[j].gain>100000*(Number(next.tier.split('.')[1])-Number(choices[j].tier.split('.')[1])));const r=document.createElement('div');r.className='refine-note pie-comparison-result';r.style.marginLeft='8px';r.style.color=improved?'#55e69c':'#aab7c4';r.textContent='Pie '+c.tier+' · '+Math.round(c.gain).toLocaleString('nl-BE')+' / city';result.append(r);}
  }
 }
 }if(result.childElementCount===groupStart+1)h.remove();}updatePriceAlerts();$('refineInfo').textContent=Object.keys(refiningComputed).length+'/'+(document.querySelectorAll('#refineTierChecks input:checked').length*4)+' refinekosten berekend. Ontbrekende prijzen worden niet gekopieerd.'}
